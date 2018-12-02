@@ -1,2 +1,8 @@
-# ansible-playbooks
-Various Ansible Playbooks that I'm testing. I'm a complete newbie, so likely nothing worth seeing here.
+# Ansible Playbooks
+
+## `lxd-testenv`
+
+Small suite of playbooks intended to help quickly spin up a test environment
+for other playbook work.
+
+See the [README](lxd-testenv/README.md) for more info.
