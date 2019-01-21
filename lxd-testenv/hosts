@@ -1,0 +1,45 @@
+# vim: ts=4:sw=4:et:ft=ini
+# -*- mode: ini; indent-tabs-mode: nil; tab-width: 4 -*-
+# code: language=ini insertSpaces=true tabSize=4
+
+# Inventory file for Ansible testing purposes
+
+# Hosts HAVE to be included in one of the OS groups in order to be
+# spun up as a LXD container.
+
+[centos]
+
+ansible-centos-1
+ansible-centos-2
+ansible-centos-3
+ansible-centos-4
+ansible-centos-5
+ansible-centos-6
+ansible-centos-7
+ansible-centos-8
+
+[ubuntu]
+
+ansible-ubuntu-9
+ansible-ubuntu-10
+ansible-ubuntu-11
+ansible-ubuntu-12
+ansible-ubuntu-13
+
+
+[all:vars]
+
+# Everything in this inventory is a LXD container, so make sure Ansible only
+# uses that means of establishing a connection.
+ansible_connection = lxd
+
+# lxd does not support remote_user (i.e., this setting) and defaults to 'root'
+ansible_user = root
+
+# Defines what container image is used
+[ubuntu:vars]
+source = ubuntu/xenial/amd64
+
+# Defines what container image is used
+[centos:vars]
+source = centos/7/amd64

@@ -1,0 +1,103 @@
+---
+
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://docs.ansible.com/ansible/latest/modules/lxd_container_module.html
+
+# Prune container settings after completion of test work
+
+- name: Login to all hosts (in inventory) in order to collect Ansible Facts
+  hosts: all
+  gather_facts: yes
+  become: no
+
+  tasks:
+    - name: Create dynamic host groups based on their OS distribution
+      group_by:
+        key: os_{{ ansible_facts['distribution'] }}
+  tags:
+    # Assumption: We always want to gather facts before beginning work
+    - always
+
+- name: Prune SSH host key entries
+  hosts: all
+  connection: local
+  gather_facts: no
+
+  tasks:
+
+    # Perform this task before shutting down/removing containers
+    # we may not be able to easily obtain the information otherwise
+    # - name: "Remove container hostkeys from known_hosts file on LXD host"
+    #   become: no
+    #   shell: |
+    #     ssh-keygen -R {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
+    #     ssh-keygen -R {{ inventory_hostname }}
+    #   tags:
+    #     - never
+    #     - remove
+
+    - name: "Remove container hostkeys from known_hosts file on LXD host via IP Address"
+      delegate_to: localhost
+      become: no
+      known_hosts:
+        path: "~/.ssh/known_hosts"
+        name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+        state: absent
+      tags:
+        - remove
+
+    - name: "Remove container hostkeys from known_hosts file on LXD host via hostname"
+      delegate_to: localhost
+      become: no
+      known_hosts:
+        path: "~/.ssh/known_hosts"
+        name: "{{ inventory_hostname }}"
+        state: absent
+      tags:
+        - remove
+
+- name: Remove our LXD containers
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  tasks:
+
+    - name: Stop containers
+      lxd_container:
+        name: "{{ item }}"
+        state: stopped
+        timeout: 90
+      with_items:
+        - "{{ groups['centos'] }}"
+        - "{{ groups['ubuntu'] }}"
+      tags:
+        - remove
+
+    - name: Delete containers
+      lxd_container:
+        name: "{{ item }}"
+        state: absent
+        timeout: 90
+      with_items:
+        - "{{ groups['centos'] }}"
+        - "{{ groups['ubuntu'] }}"
+      tags:
+        - remove
+
+    - name: "Remove container entries from hosts file on LXD host"
+      become: yes
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item }}$'
+        state: absent
+      with_items:
+        - "{{ groups['all'] }}"
+      tags:
+        - remove
+
+
+...

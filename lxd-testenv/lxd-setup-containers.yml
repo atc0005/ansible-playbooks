@@ -1,0 +1,149 @@
+---
+
+# vim: ts=2:sw=2:et:ft=yaml
+# -*- mode: yaml; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=yaml insertSpaces=true tabSize=2
+
+# https://docs.ansible.com/ansible/latest/modules/lxd_container_module.html
+
+- name: Create LXD containers for Ansible test environment
+  hosts: localhost
+  connection: local
+  tasks:
+
+    # TODO: Combine 'when', 'item' and 'with_items' to process groups
+
+    - name: Create containers
+      delegate_to: localhost
+      lxd_container:
+        name: "{{ item }}"
+        state: started
+        source:
+          type: image
+          mode: pull
+          server: https://images.linuxcontainers.org
+          protocol: lxd
+          alias: "{{ hostvars[item]['source'] }}"
+        profiles: ["default"]
+        wait_for_ipv4_addresses: true
+        timeout: 600
+      with_items:
+        - "{{ groups['ubuntu'] }}"
+        - "{{ groups['centos'] }}"
+      tags:
+        - create
+
+- name: Bootstrap LXD containers for Ansible test environment
+  hosts: all
+  connection: local
+  vars:
+    # Configured in hosts file, but specifying here as well for clarity
+    ansible_connection: lxd
+
+  # Python is not present at this point, so we cannot gather facts
+  # https://docs.ansible.com/ansible/latest/modules/raw_module.html
+  gather_facts: false
+  tasks:
+
+    - name: Confirm python is installed in container
+      raw: test -e /usr/bin/python
+      register: python_install_check
+      failed_when: python_install_check.rc not in [0, 1]
+      changed_when: false
+
+    # Triggered when -vvvv is specified
+    # https://docs.ansible.com/ansible/latest/modules/debug_module.html
+    - name: DEBUG | Display all known facts about host
+      debug:
+        var: hostvars[inventory_hostname]
+        verbosity: 4
+
+    # Triggered when -vv is specified
+    - name: DEBUG | Show python check results
+      debug:
+        var: python_install_check.stdout
+        verbosity: 2
+
+    # Only occurs with containers without Python
+    - name: Install Python on Ubuntu containers
+      raw: apt-get update && apt-get install -y python
+      when:
+        - python_install_check.rc == 1
+        - inventory_hostname in groups['ubuntu']
+
+    # Only occurs with containers without Python
+    - name: Install Python on CentOS containers
+      raw: yum install -y python
+      when:
+        - python_install_check.rc == 1
+        - inventory_hostname in groups['centos']
+
+
+- name: Prep containers for management via SSH
+  hosts: all
+  connection: local
+  gather_facts: yes
+  vars:
+    # Configured in hosts file, but specifying here as well for clarity
+    ansible_connection: lxd
+
+  tasks:
+
+    - name: Install required packages
+      package:
+        name:
+          - openssh-server
+          - sudo
+        state: present
+
+    - name: Deploy current user SSH public key to root user in container
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
+
+    - name: Create ansible group
+      group:
+        name: "ansible"
+        state: present
+        system: no
+
+    - name: Create ansible user
+      user:
+        name: "ansible"
+        comment: Service account used by Ansible to configure system
+        group: "ansible"
+        state: present
+        system: no
+
+    - name: Deploy current user SSH public key to ansible user in container
+      authorized_key:
+        user: ansible
+        state: present
+        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
+
+    - name: "Create ansible sudoers file in container"
+      copy:
+        content: 'ansible ALL=(ALL) NOPASSWD: ALL'
+        dest: /etc/sudoers.d/ansible'
+        owner: root
+        group: root
+        mode: 0440
+
+    - name: Start SSH, set it to start at boot
+      service:
+        name: sshd
+        state: started
+        enabled: yes
+
+    - name: "Update hosts file in container"
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ item}}$'
+        line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
+        state: present
+      when: hostvars[item].ansible_default_ipv4.address is defined
+      with_items:
+        - "{{ groups['all'] }}"
+
+...
