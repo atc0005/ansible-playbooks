@@ -1,4 +1,4 @@
-# lxd-testenv playbook
+# lxd-testenv playbooks
 
 *Small suite of playbooks intended to help quickly spin up a test environment
 for other playbook work.*
@@ -19,17 +19,17 @@ used for accessing containers on the test LXD host system.
 
 `sudo apt-get install lxd lxd-client`
 
-### Initial setup
+### Initial LXD setup
 
-The `ansible-lxd.yml` playbook requires that you first install the LXD
-daemon and client packages. After that, run `sudo lxd init`.
+These playbooks require that you first install the LXD daemon and client
+packages. After that, run `sudo lxd init`.
 
 Be sure to use NAT, DHCP and setup a bridge network device (NAT).
 
 **Note:** This held true as of LXD 2.0. I have not tested 2.5+ sufficiently
 to know what additional steps are needed to safely setup LXD for local testing.
 
-## Using the `lxd-*.yml` playbooks
+## Usage
 
 ### Create new test environment
 
