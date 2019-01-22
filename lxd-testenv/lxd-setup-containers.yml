@@ -111,6 +111,9 @@
     - name: Create ansible user
       user:
         name: "ansible"
+        # Explicitly specify this in case the default behavior ever changes
+        # Credit: @auadamw
+        create_home: yes
         comment: Service account used by Ansible to configure system
         group: "ansible"
         state: present
