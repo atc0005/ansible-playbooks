@@ -24,7 +24,15 @@ used for accessing containers on the test LXD host system.
 These playbooks require that you first install the LXD daemon and client
 packages. After that, run `sudo lxd init`.
 
-Be sure to use NAT, DHCP and setup a bridge network device (NAT).
+Be sure to use NAT, DHCP and setup a bridge network device (NAT). Containers
+created and attached to this bridge will be reachable by the host (and each
+other), but will not be directly reachable by external systems. You will need
+to setup port forwarding rules *or* setup an external bridge for containers
+to be externally reachable. Additionally, you will need to reconfigure LXD
+to use the new bridge device.
+
+For most (playbook) testing purposes, the NAT bridge will probably be
+sufficient.
 
 **Note:** This held true as of LXD 2.0. I have not tested 2.5+ sufficiently
 to know what additional steps are needed to safely setup LXD for local testing.
@@ -33,8 +41,16 @@ to know what additional steps are needed to safely setup LXD for local testing.
 
 ### Create new test environment
 
+If you wish to setup containers and the host as separate steps (perhaps for
+troubleshooting purposes):
+
 1. `ansible-playbook -i hosts lxd-setup-containers.yml -K`
 1. `ansible-playbook -i hosts lxd-setup-host.yml -K`
+
+Alternatively, you can combine the steps from both playbooks by using the
+provided "wrapper" playbook:
+
+1. `ansible-playbook -i hosts lxd-setup.yml -K`
 
 ### Teardown test environment
 

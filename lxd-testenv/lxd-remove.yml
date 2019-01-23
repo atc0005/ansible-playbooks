@@ -13,6 +13,10 @@
   gather_facts: yes
   become: no
 
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
+
   tasks:
     - name: Create dynamic host groups based on their OS distribution
       group_by:
@@ -25,6 +29,10 @@
   hosts: all
   connection: local
   gather_facts: no
+
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
 
   tasks:
 
@@ -63,6 +71,10 @@
   hosts: localhost
   connection: local
   gather_facts: no
+
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
 
   tasks:
 
