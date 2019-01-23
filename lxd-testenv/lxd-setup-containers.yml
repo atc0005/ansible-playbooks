@@ -9,9 +9,12 @@
 - name: Create LXD containers for Ansible test environment
   hosts: localhost
   connection: local
-  tasks:
 
-    # TODO: Combine 'when', 'item' and 'with_items' to process groups
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
+
+  tasks:
 
     - name: Create containers
       delegate_to: localhost
@@ -39,6 +42,10 @@
   vars:
     # Configured in hosts file, but specifying here as well for clarity
     ansible_connection: lxd
+
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
 
   # Python is not present at this point, so we cannot gather facts
   # https://docs.ansible.com/ansible/latest/modules/raw_module.html
@@ -85,7 +92,14 @@
   gather_facts: yes
   vars:
     # Configured in hosts file, but specifying here as well for clarity
+    # WARNING: Do not specify this for ALL plays, just ones where we
+    # will be directly manipulating containers. Attempts to directly
+    # modify the host with this value defined may (will?) fail.
     ansible_connection: lxd
+
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
 
   tasks:
 
@@ -95,12 +109,6 @@
           - openssh-server
           - sudo
         state: present
-
-    - name: Deploy current user SSH public key to root user in container
-      authorized_key:
-        user: root
-        state: present
-        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
 
     - name: Create ansible group
       group:
@@ -119,12 +127,6 @@
         state: present
         system: no
 
-    - name: Deploy current user SSH public key to ansible user in container
-      authorized_key:
-        user: ansible
-        state: present
-        key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
-
     - name: "Create ansible sudoers file in container"
       copy:
         content: 'ansible ALL=(ALL) NOPASSWD: ALL'
@@ -132,6 +134,15 @@
         owner: root
         group: root
         mode: 0440
+
+    - name: Deploy current user SSH public key to specific users in container
+      authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ ssh_public_key_for_containers }}"
+      with_items:
+        - root
+        - ansible
 
     - name: Start SSH, set it to start at boot
       service:
@@ -145,7 +156,9 @@
         regexp: '.*{{ item}}$'
         line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
         state: present
-      when: hostvars[item].ansible_default_ipv4.address is defined
+      when:
+        - hostvars[item].ansible_default_ipv4.address is defined
+        - update_container_hosts_file
       with_items:
         - "{{ groups['all'] }}"
 

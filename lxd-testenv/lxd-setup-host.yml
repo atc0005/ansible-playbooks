@@ -17,6 +17,10 @@
     # Configured in hosts file, but specifying here as well for clarity
     ansible_connection: lxd
 
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
+
   tasks:
     - name: Create dynamic host groups based on their OS distribution
       group_by:
@@ -31,8 +35,9 @@
   connection: local
   gather_facts: yes
 
-  vars:
-    ssh_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
+  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+  vars_files:
+    - vars/main.yml
 
   tasks:
 
@@ -45,7 +50,9 @@
         regexp: '.*{{ hostvars[item].inventory_hostname }}$'
         line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
         state: present
-      when: hostvars[item].ansible_default_ipv4.address is defined
+      when:
+        - hostvars[item].ansible_default_ipv4.address is defined
+        - update_host_etc_hosts_file
       with_items:
         - "{{ groups['all'] }}"
 
@@ -58,6 +65,9 @@
       register: ssh_known_host_results
       changed_when: ssh_known_host_results.rc != 0
       failed_when: ssh_known_host_results.rc != 0
+      when:
+        - hostvars[item].ansible_default_ipv4.address is defined
+        - update_host_known_hosts_file
       with_items:
         - "{{ groups['all'] }}"
 
@@ -72,5 +82,7 @@
         name: "{{ item.item }}"
         key: "{{ item.stdout }}"
         path: "{{ ssh_known_hosts_file }}"
+      when:
+        - update_host_known_hosts_file
       with_items: "{{ ssh_known_host_results.results }}"
 

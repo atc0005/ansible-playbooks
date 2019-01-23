@@ -1,0 +1,26 @@
+---
+
+# vim: ts=2:sw=2:et:ft=ansible
+# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=ansible insertSpaces=true tabSize=2
+
+# Should the /etc/hosts file on each container be updated to list all other
+# containers? If this is not enabled, then built-in dnsmasq support will be used
+# to provide name resolution between containers.
+update_container_hosts_file: false
+
+# This key will be pushed from the host to each container that is created
+ssh_public_key_for_containers: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
+
+# By default, update the $HOME/.ssh/known_hosts file on the host with
+# host keys from all containers.
+update_host_known_hosts_file: true
+
+# By default, update the /etc/hosts file on the host (e.g., the system running
+# the LXD containers) to reflect each container name/IP pair
+update_host_etc_hosts_file: true
+
+# Host copy of file. Updated to reflect host keys of all containers.
+ssh_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
+
+...
