@@ -1,0 +1,12 @@
+---
+
+# vim: ts=2:sw=2:et:ft=ansible
+# -*- mode: ansible; indent-tabs-mode: nil; tab-width: 2 -*-
+# code: language=ansible insertSpaces=true tabSize=2
+
+# Convenience wrapper playbook to call both lxd-setup-* playbooks
+
+- import_playbook: lxd-setup-containers.yml
+- import_playbook: lxd-setup-host.yml
+
+...
