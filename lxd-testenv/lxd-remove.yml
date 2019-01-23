@@ -51,7 +51,7 @@
       delegate_to: localhost
       become: no
       known_hosts:
-        path: "~/.ssh/known_hosts"
+        path: "{{ ssh_known_hosts_file }}"
         name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
         state: absent
       tags:
@@ -61,7 +61,7 @@
       delegate_to: localhost
       become: no
       known_hosts:
-        path: "~/.ssh/known_hosts"
+        path: "{{ ssh_known_hosts_file }}"
         name: "{{ inventory_hostname }}"
         state: absent
       tags:

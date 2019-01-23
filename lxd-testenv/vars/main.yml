@@ -23,4 +23,16 @@ update_host_etc_hosts_file: true
 # Host copy of file. Updated to reflect host keys of all containers.
 ssh_known_hosts_file: "{{ lookup('env','HOME') + '/.ssh/known_hosts' }}"
 
+lxd_container_profiles:
+  - "default"
+
+# Server listed in the Ansible module examples
+lxd_image_server: "https://images.linuxcontainers.org"
+
+# These packages will be installed for each container after creation
+lxd_container_package_list:
+  - openssh-server
+  - sudo
+
+
 ...
