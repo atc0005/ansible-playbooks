@@ -24,10 +24,10 @@
         source:
           type: image
           mode: pull
-          server: https://images.linuxcontainers.org
+          server: "{{ lxd_image_server }}"
           protocol: lxd
           alias: "{{ hostvars[item]['source'] }}"
-        profiles: ["default"]
+        profiles: "{{ lxd_container_profiles }}"
         wait_for_ipv4_addresses: true
         timeout: 600
       with_items:
@@ -105,9 +105,7 @@
 
     - name: Install required packages
       package:
-        name:
-          - openssh-server
-          - sudo
+        name: "{{ lxd_container_package_list }}"
         state: present
 
     - name: Create ansible group
