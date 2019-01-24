@@ -26,12 +26,9 @@
     - always
 
 - name: Prune SSH host key entries
-  hosts: all
+  hosts: localhost
   connection: local
   gather_facts: no
-
-  # Needed to avoid race conditions (refs atc0005/ansible-playbooks#11)
-  serial: 1
 
   # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
   vars_files:
@@ -39,24 +36,18 @@
 
   tasks:
 
-    # Perform this task before shutting down/removing containers
-    # we may not be able to easily obtain the information otherwise
-    # - name: "Remove container hostkeys from known_hosts file on LXD host"
-    #   become: no
-    #   shell: |
-    #     ssh-keygen -R {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}
-    #     ssh-keygen -R {{ inventory_hostname }}
-    #   tags:
-    #     - never
-    #     - remove
-
+    # Note: If setting 'hosts' for this play to anything but localhost, make
+    # sure to set 'serial: 1' in order to avoid race conditions
+    # (refs atc0005/ansible-playbooks#11)
     - name: "Remove container hostkeys from known_hosts file on LXD host via IP Address"
-      delegate_to: localhost
       become: no
       known_hosts:
         path: "{{ ssh_known_hosts_file }}"
-        name: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+        name: "{{ hostvars[item].ansible_default_ipv4.address }}"
         state: absent
+      with_items:
+        - "{{ groups['centos'] }}"
+        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
 
@@ -65,8 +56,11 @@
       become: no
       known_hosts:
         path: "{{ ssh_known_hosts_file }}"
-        name: "{{ inventory_hostname }}"
+        name: "{{ item }}"
         state: absent
+      with_items:
+        - "{{ groups['centos'] }}"
+        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
 
@@ -110,7 +104,8 @@
         regexp: '.*{{ item }}$'
         state: absent
       with_items:
-        - "{{ groups['all'] }}"
+        - "{{ groups['centos'] }}"
+        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
 
