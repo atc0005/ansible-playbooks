@@ -105,3 +105,8 @@ venv.bak/
 
 # Ignore Ansible retry files
 *.retry
+
+# This location used to contain roles that were actively under development,
+# but all have since been moved to separate repos. Explicitly excluding this
+# path to help prevent accidental re-inclusion in the future.
+lxd-testenv/roles/
