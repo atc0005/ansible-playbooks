@@ -35,6 +35,9 @@
   connection: local
   gather_facts: yes
 
+  # Likely needed to avoid race conditions (refs atc0005/ansible-playbooks#11)
+  serial: 1
+
   # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
   vars_files:
     - vars/main.yml
