@@ -8,28 +8,6 @@
 
 # An example for creating Ubuntu containers and installing python in each
 
-- name: Login to all hosts (in inventory) in order to collect Ansible Facts
-  hosts: all
-  gather_facts: yes
-  become: no
-
-  vars:
-    # Configured in hosts file, but specifying here as well for clarity
-    ansible_connection: lxd
-
-  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
-  vars_files:
-    - vars/main.yml
-
-  tasks:
-    - name: Create dynamic host groups based on their OS distribution
-      group_by:
-        key: os_{{ ansible_facts['distribution'] }}
-  tags:
-    # Assumption: We always want to gather facts before beginning work
-    - always
-
-
 - name: Update container host
   hosts: localhost
   connection: local
@@ -43,6 +21,17 @@
     - vars/main.yml
 
   tasks:
+
+    # https://groups.google.com/forum/#!topic/Ansible-project/n5bYP5BIbcQ
+    - name: Gather facts
+      setup:
+      become: no
+      delegate_to: '{{ item }}'
+      delegate_facts: true
+      with_items:
+        - "{{ groups['all'] }}"
+      # Any special meaning for this variable name?
+      register: setup
 
     # Generate /etc/hosts with Ansible
     # https://gist.github.com/rothgar/8793800
@@ -73,12 +62,6 @@
         - update_host_known_hosts_file
       with_items:
         - "{{ groups['all'] }}"
-
-    # - name: For each host, scan for its ssh public key
-    #   shell: "ssh-keyscan {{ item }},`dig +short {{ item }}`"
-    #   with_items: "{{ groups['all'] }}"
-    #   register: ssh_known_host_results
-    #   ignore_errors: yes
 
     - name: Add/update the public key in the '{{ ssh_known_hosts_file }}'
       known_hosts:

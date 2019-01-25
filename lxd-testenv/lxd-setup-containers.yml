@@ -30,6 +30,7 @@
         profiles: "{{ lxd_container_profiles }}"
         wait_for_ipv4_addresses: true
         timeout: 600
+      register: container_return_values
       with_items:
         - "{{ groups['ubuntu'] }}"
         - "{{ groups['centos'] }}"
@@ -39,6 +40,7 @@
 - name: Bootstrap LXD containers for Ansible test environment
   hosts: all
   connection: local
+
   vars:
     # Configured in hosts file, but specifying here as well for clarity
     ansible_connection: lxd
@@ -62,42 +64,34 @@
     # https://docs.ansible.com/ansible/latest/modules/debug_module.html
     - name: DEBUG | Display all known facts about host
       debug:
-        var: hostvars[inventory_hostname]
-        verbosity: 4
+        var: inventory_hostname
 
     # Triggered when -vv is specified
     - name: DEBUG | Show python check results
       debug:
-        var: python_install_check.stdout
+        var: hostvars[inventory_hostname]['python_install_check']['stdout']
         verbosity: 2
 
     # Only occurs with containers without Python
     - name: Install Python on Ubuntu containers
       raw: apt-get update && apt-get install -y python
       when:
-        - python_install_check.rc == 1
+        - hostvars[inventory_hostname]['python_install_check']['rc'] == 1
         - inventory_hostname in groups['ubuntu']
 
     # Only occurs with containers without Python
     - name: Install Python on CentOS containers
       raw: yum install -y python
       when:
-        - python_install_check.rc == 1
+        - hostvars[inventory_hostname]['python_install_check']['rc'] == 1
         - inventory_hostname in groups['centos']
 
-
 - name: Prep containers for management via SSH
-  hosts: all
+  hosts: "all"
   connection: local
-  gather_facts: yes
-  vars:
-    # Configured in hosts file, but specifying here as well for clarity
-    # WARNING: Do not specify this for ALL plays, just ones where we
-    # will be directly manipulating containers. Attempts to directly
-    # modify the host with this value defined may (will?) fail.
-    ansible_connection: lxd
+  gather_facts: no
 
-  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
+   # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
   vars_files:
     - vars/main.yml
 
@@ -133,31 +127,24 @@
         group: root
         mode: 0440
 
-    - name: Deploy current user SSH public key to specific users in container
+    - name: Deploy current user SSH public key to root account in container
       authorized_key:
-        user: "{{ item }}"
+        # TODO: abstract this
+        user: "root"
         state: present
         key: "{{ ssh_public_key_for_containers }}"
-      with_items:
-        - root
-        - ansible
+
+    - name: Deploy current user SSH public key to service account in container
+      authorized_key:
+        # TODO: abstract this later to separate variable
+        user: "ansible"
+        state: present
+        key: "{{ ssh_public_key_for_containers }}"
 
     - name: Start SSH, set it to start at boot
       service:
         name: sshd
         state: started
         enabled: yes
-
-    - name: "Update hosts file in container"
-      lineinfile:
-        dest: /etc/hosts
-        regexp: '.*{{ item}}$'
-        line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
-        state: present
-      when:
-        - hostvars[item].ansible_default_ipv4.address is defined
-        - update_container_hosts_file
-      with_items:
-        - "{{ groups['all'] }}"
 
 ...
