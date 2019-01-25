@@ -10,45 +10,45 @@
 [centos]
 
 ansible-centos-1
-ansible-centos-2
-ansible-centos-3
-ansible-centos-4
-ansible-centos-5
-ansible-centos-6
-ansible-centos-7
-ansible-centos-8
+; ansible-centos-2
+; ansible-centos-3
+; ansible-centos-4
+; ansible-centos-5
+; ansible-centos-6
+; ansible-centos-7
+; ansible-centos-8
 
 [ubuntu]
 
 ansible-ubuntu-9
-ansible-ubuntu-10
-ansible-ubuntu-11
-ansible-ubuntu-12
-ansible-ubuntu-13
+; ansible-ubuntu-10
+; ansible-ubuntu-11
+; ansible-ubuntu-12
+; ansible-ubuntu-13
 
 
-[tier1]
-ansible-centos-1
-ansible-ubuntu-11
+; [tier1]
+; ansible-centos-1
+; ansible-ubuntu-11
 
-[tier2]
-ansible-centos-3
-ansible-ubuntu-10
+; [tier2]
+; ansible-centos-3
+; ansible-ubuntu-10
 
-[tier3]
-ansible-centos-4
-ansible-centos-5
-ansible-ubuntu-12
+; [tier3]
+; ansible-centos-4
+; ansible-centos-5
+; ansible-ubuntu-12
 
-[tier4]
-ansible-centos-2
-ansible-ubuntu-9
+; [tier4]
+; ansible-centos-2
+; ansible-ubuntu-9
 
-[tier5]
-ansible-centos-6
-ansible-centos-7
-ansible-centos-8
-ansible-ubuntu-13
+; [tier5]
+; ansible-centos-6
+; ansible-centos-7
+; ansible-centos-8
+; ansible-ubuntu-13
 
 
 [all:vars]

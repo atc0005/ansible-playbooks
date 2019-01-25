@@ -9,9 +9,9 @@
 # An example for creating Ubuntu containers and installing python in each
 
 - name: Update container host
-  hosts: localhost
+  hosts: all
   connection: local
-  gather_facts: yes
+  gather_facts: no
 
   # Likely needed to avoid race conditions (refs atc0005/ansible-playbooks#11)
   serial: 1
@@ -26,10 +26,6 @@
     - name: Gather facts
       setup:
       become: no
-      delegate_to: '{{ item }}'
-      delegate_facts: true
-      with_items:
-        - "{{ groups['all'] }}"
       # Any special meaning for this variable name?
       register: setup
 
@@ -37,38 +33,44 @@
     # https://gist.github.com/rothgar/8793800
     - name: "Update hosts file on LXD host"
       become: yes
+      delegate_to: localhost
       lineinfile:
         dest: /etc/hosts
-        regexp: '.*{{ hostvars[item].inventory_hostname }}$'
-        line: "{{ hostvars[item].ansible_default_ipv4.address }} {{ item }}"
+        regexp: '.*{{ inventory_hostname }}$'
+        line: "{{ ansible_default_ipv4.address }} {{ inventory_hostname }}"
         state: present
       when:
-        - hostvars[item].ansible_default_ipv4.address is defined
+        - ansible_default_ipv4.address is defined
         - update_host_etc_hosts_file
-      with_items:
-        - "{{ groups['all'] }}"
 
     # https://stackoverflow.com/questions/30226113/ansible-ssh-prompt-known-hosts-issue
     - name: Scan each host for its ssh public key
       become: no
+      # If hashed entries are desired, use the '-H' option:
+      #ssh-keyscan -H {{ inventory_hostname }},{{ ansible_default_ipv4.address }}
       shell: |
-        #ssh-keyscan -H {{ hostvars[item].inventory_hostname }},{{ hostvars[item].ansible_default_ipv4.address }}
-        ssh-keyscan {{ hostvars[item].inventory_hostname }},{{ hostvars[item].ansible_default_ipv4.address }}
+        ssh-keyscan {{ inventory_hostname }},{{ ansible_default_ipv4.address }}
       register: ssh_known_host_results
+      delegate_to: localhost
+      delegate_facts: yes
       changed_when: ssh_known_host_results.rc != 0
       failed_when: ssh_known_host_results.rc != 0
       when:
-        - hostvars[item].ansible_default_ipv4.address is defined
+        - ansible_default_ipv4.address is defined
         - update_host_known_hosts_file
-      with_items:
-        - "{{ groups['all'] }}"
+
+    # - name: Display ssh host key results
+    #   debug:
+    #     var: ssh_known_host_results
 
     - name: Add/update the public key in the '{{ ssh_known_hosts_file }}'
+      delegate_to: localhost
       known_hosts:
-        name: "{{ item.item }}"
-        key: "{{ item.stdout }}"
+        name: "{{ inventory_hostname }}"
+        key: "{{ ssh_known_host_results.stdout }}"
         path: "{{ ssh_known_hosts_file }}"
       when:
         - update_host_known_hosts_file
-      with_items: "{{ ssh_known_host_results.results }}"
+      with_items: "{{ ssh_known_host_results.stdout_lines }}"
 
+# "{{ hostvars[inventory_hostname]['source'] }}"

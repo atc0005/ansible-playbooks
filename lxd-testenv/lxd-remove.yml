@@ -8,27 +8,13 @@
 
 # Prune container settings after completion of test work
 
-- name: Login to all hosts (in inventory) in order to collect Ansible Facts
-  hosts: all
-  gather_facts: yes
-  become: no
-
-  # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
-  vars_files:
-    - vars/main.yml
-
-  tasks:
-    - name: Create dynamic host groups based on their OS distribution
-      group_by:
-        key: os_{{ ansible_facts['distribution'] }}
-  tags:
-    # Assumption: We always want to gather facts before beginning work
-    - always
-
 - name: Prune SSH host key entries
-  hosts: localhost
+  hosts: all
   connection: local
-  gather_facts: no
+  gather_facts: yes
+
+  # Likely needed to avoid race conditions (refs atc0005/ansible-playbooks#11)
+  serial: 1
 
   # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
   vars_files:
@@ -41,13 +27,11 @@
     # (refs atc0005/ansible-playbooks#11)
     - name: "Remove container hostkeys from known_hosts file on LXD host via IP Address"
       become: no
+      delegate_to: localhost
       known_hosts:
         path: "{{ ssh_known_hosts_file }}"
-        name: "{{ hostvars[item].ansible_default_ipv4.address }}"
+        name: "{{ ansible_default_ipv4.address }}"
         state: absent
-      with_items:
-        - "{{ groups['centos'] }}"
-        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
 
@@ -56,16 +40,23 @@
       become: no
       known_hosts:
         path: "{{ ssh_known_hosts_file }}"
-        name: "{{ item }}"
+        name: "{{ inventory_hostname }}"
         state: absent
-      with_items:
-        - "{{ groups['centos'] }}"
-        - "{{ groups['ubuntu'] }}"
+      tags:
+        - remove
+
+    - name: "Remove container entries from hosts file on LXD host"
+      delegate_to:
+      become: yes
+      lineinfile:
+        dest: /etc/hosts
+        regexp: '.*{{ inventory_hostname }}$'
+        state: absent
       tags:
         - remove
 
 - name: Remove our LXD containers
-  hosts: localhost
+  hosts: all
   connection: local
   gather_facts: no
 
@@ -76,38 +67,21 @@
   tasks:
 
     - name: Stop containers
+      delegate_to: localhost
       lxd_container:
-        name: "{{ item }}"
+        name: "{{ inventory_hostname }}"
         state: stopped
         timeout: 90
-      with_items:
-        - "{{ groups['centos'] }}"
-        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
 
     - name: Delete containers
+      delegate_to: localhost
       lxd_container:
-        name: "{{ item }}"
+        name: "{{ inventory_hostname }}"
         state: absent
         timeout: 90
-      with_items:
-        - "{{ groups['centos'] }}"
-        - "{{ groups['ubuntu'] }}"
       tags:
         - remove
-
-    - name: "Remove container entries from hosts file on LXD host"
-      become: yes
-      lineinfile:
-        dest: /etc/hosts
-        regexp: '.*{{ item }}$'
-        state: absent
-      with_items:
-        - "{{ groups['centos'] }}"
-        - "{{ groups['ubuntu'] }}"
-      tags:
-        - remove
-
 
 ...

@@ -7,8 +7,9 @@
 # https://docs.ansible.com/ansible/latest/modules/lxd_container_module.html
 
 - name: Create LXD containers for Ansible test environment
-  hosts: localhost
+  hosts: all
   connection: local
+  gather_facts: no
 
   # TODO: Cleanup, move to defaults/main.yml when migrating to lxd-testenv role
   vars_files:
@@ -19,21 +20,18 @@
     - name: Create containers
       delegate_to: localhost
       lxd_container:
-        name: "{{ item }}"
+        name: "{{ inventory_hostname }}"
         state: started
         source:
           type: image
           mode: pull
           server: "{{ lxd_image_server }}"
           protocol: lxd
-          alias: "{{ hostvars[item]['source'] }}"
+          alias: "{{ hostvars[inventory_hostname]['source'] }}"
         profiles: "{{ lxd_container_profiles }}"
         wait_for_ipv4_addresses: true
         timeout: 600
       register: container_return_values
-      with_items:
-        - "{{ groups['ubuntu'] }}"
-        - "{{ groups['centos'] }}"
       tags:
         - create
 
@@ -69,25 +67,25 @@
     # Triggered when -vv is specified
     - name: DEBUG | Show python check results
       debug:
-        var: hostvars[inventory_hostname]['python_install_check']['stdout']
+        var: python_install_check.stdout
         verbosity: 2
 
     # Only occurs with containers without Python
     - name: Install Python on Ubuntu containers
       raw: apt-get update && apt-get install -y python
       when:
-        - hostvars[inventory_hostname]['python_install_check']['rc'] == 1
+        - python_install_check.rc == 1
         - inventory_hostname in groups['ubuntu']
 
     # Only occurs with containers without Python
     - name: Install Python on CentOS containers
       raw: yum install -y python
       when:
-        - hostvars[inventory_hostname]['python_install_check']['rc'] == 1
+        - python_install_check.rc == 1
         - inventory_hostname in groups['centos']
 
 - name: Prep containers for management via SSH
-  hosts: "all"
+  hosts: all
   connection: local
   gather_facts: no
 
@@ -122,24 +120,20 @@
     - name: "Create ansible sudoers file in container"
       copy:
         content: 'ansible ALL=(ALL) NOPASSWD: ALL'
-        dest: /etc/sudoers.d/ansible'
+        dest: /etc/sudoers.d/ansible
         owner: root
         group: root
         mode: 0440
 
-    - name: Deploy current user SSH public key to root account in container
+    - name: Deploy current SSH public key specific users in container
       authorized_key:
         # TODO: abstract this
-        user: "root"
+        user: "{{ item }}"
         state: present
         key: "{{ ssh_public_key_for_containers }}"
-
-    - name: Deploy current user SSH public key to service account in container
-      authorized_key:
-        # TODO: abstract this later to separate variable
-        user: "ansible"
-        state: present
-        key: "{{ ssh_public_key_for_containers }}"
+      with_items:
+        - "root"
+        - "ansible"
 
     - name: Start SSH, set it to start at boot
       service:
