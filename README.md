@@ -13,20 +13,15 @@ Please know that I am a newbie, so there are likely questionable design and
 implementation decisions scattered about. Please open an issue for anything
 you find out of place.
 
-## Playbooks
+## In development
 
-### `lxd-testenv`
+No playbooks are under active testing/development at this time. See the repo
+links below for playbooks and roles that have been promoted to dedicated
+repos.
 
-Small suite of playbooks intended to help quickly spin up a test environment
-for other playbook work.
+## Promoted Playbooks / Roles
 
-See the [README](lxd-testenv/README.md) for those playbooks for more info.
-
-## Roles
-
-These are some of the roles that are used by playbooks in this repo. Some of
-them started off here in this repo before being moved to a dedicated repo for
-further development.
+- <https://github.com/atc0005/ansible-playbook-lxd-testenv>
 
 - <https://github.com/atc0005/ansible-role-lxd-host>
 - <https://github.com/atc0005/ansible-role-lxd-testenv>
